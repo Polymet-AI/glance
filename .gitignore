@@ -1,0 +1,18 @@
+node_modules/
+*.tsbuildinfo
+.DS_Store
+coverage/
+.tmp/
+
+# Local secrets. Everything env-shaped is ignored and the example is the one
+# exception, so a new variant like `.env.development` cannot be committed by
+# having been invented after this file was written.
+.env*
+!.env.example
+
+# Next
+.next/
+next-env.d.ts
+
+# Build output: the bundled extractor and the console snippet
+generated/

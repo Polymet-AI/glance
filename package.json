@@ -1,0 +1,37 @@
+{
+  "name": "glance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Design review for any URL. Renders the page in a real browser, scores it, and tells you what to fix first.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:extractor": "esbuild lib/extractor-entry.ts --bundle --format=iife --target=es2020 --outfile=generated/extractor.js",
+    "predev": "pnpm build:extractor",
+    "prebuild": "pnpm build:extractor",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "snippet": "esbuild scripts/snippet-entry.ts --bundle --format=iife --target=es2020 --outfile=generated/snippet.js"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.38.4",
+    "next": "^16.3.5",
+    "playwright": "^1.63.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
+  }
+}
