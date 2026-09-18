@@ -4,7 +4,7 @@ import { buildQuestions, buildReview } from "@/lib/review"
 import { recordReview } from "@/lib/leaderboard"
 import type { BoardEntry } from "@/lib/leaderboard"
 import { assertSafeUrl, BlockedUrlError } from "@/lib/url-guard"
-import { renderPage, rendererName } from "@/lib/renderer"
+import { renderPage, rendererName, stepsForRenderer } from "@/lib/renderer"
 
 /** Playwright needs a real Node process, so this route is never edge. */
 export const runtime = "nodejs"
@@ -74,6 +74,10 @@ export const POST = async (request: Request): Promise<Response> => {
       }
 
       try {
+        // Sent before anything happens, so the modal lists the steps this run
+        // can actually report rather than every step either renderer might.
+        send({ event: { stage: "steps", steps: stepsForRenderer() } })
+
         const { snapshot, finalUrl, title, image, pageWidth, pageHeight, flattened, sections } =
           await renderPage({
             input: parsed.url,

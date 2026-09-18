@@ -16,6 +16,29 @@ import type { RenderResult, RenderStage } from "./render-types"
 
 export const usingHostedBrowser = (): boolean => Boolean(process.env["FIRECRAWL_API_KEY"])
 
+/**
+ * The steps the active renderer will actually report.
+ *
+ * The two observe different things. A local browser sees the page load, take a
+ * first capture and settle; a hosted one hands back a finished render and can
+ * honestly claim none of that. Sending the list means the modal ticks off only
+ * what happened, instead of marking a step done because the run moved past it.
+ */
+export const stepsForRenderer = (): string[] =>
+  usingHostedBrowser()
+    ? ["checking", "loading", "rendering", "captured", "mapping", "extracting", "asking"]
+    : [
+        "checking",
+        "launching",
+        "loading",
+        "glimpse",
+        "settling",
+        "captured",
+        "mapping",
+        "extracting",
+        "asking",
+      ]
+
 /** Names the renderer in a log line, so a puzzling result is traceable. */
 export const rendererName = (): string => (usingHostedBrowser() ? "firecrawl" : "playwright")
 
