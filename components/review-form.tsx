@@ -10,6 +10,20 @@ import type { BoardEntry } from "@/lib/leaderboard"
 
 const EXAMPLES = ["stripe.com", "linear.app", "news.ycombinator.com", "vercel.com"]
 
+/**
+ * How long the captured page stays on screen before the report replaces it.
+ *
+ * The capture is the last thing to arrive and the model answers in about a
+ * second, so without this the page appears and is gone before the pan has
+ * moved. Long enough to read the frame as the page being scanned, short enough
+ * that nobody waits on it: the hold is skipped entirely when the rest of the
+ * work already took this long.
+ */
+const MIN_CAPTURE_ON_SCREEN_MS = 3_000
+
+const wait = ({ ms }: { ms: number }): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms))
+
 type StreamEvent = {
   stage: string
   steps?: string[]
@@ -88,6 +102,8 @@ export const ReviewForm = ({
   const abortRef = useRef<AbortController | null>(null)
   // Read inside the stream loop, where state would still be the old value.
   const pageShotRef = useRef<{ image: string; width: number; height: number } | null>(null)
+  /** When the capture reached the screen, so the hold measures the real wait. */
+  const captureShownAtRef = useRef<number | null>(null)
 
   const close = useCallback(() => {
     abortRef.current?.abort()
@@ -103,6 +119,7 @@ export const ReviewForm = ({
     const controller = new AbortController()
     abortRef.current = controller
     pageShotRef.current = null
+    captureShownAtRef.current = null
 
     setRunning(true)
     setStep("checking")
@@ -146,6 +163,18 @@ export const ReviewForm = ({
         // The page result arrives first and the components stream in behind
         // it, so the report is readable while they are still landing.
         if (event.stage === "done" && event.result) {
+          // Hold the capture on screen if it has only just arrived, so the pan
+          // is something the reader sees rather than a frame that flashes past.
+          const shownFor =
+            captureShownAtRef.current === null
+              ? MIN_CAPTURE_ON_SCREEN_MS
+              : performance.now() - captureShownAtRef.current
+          const hold = Math.max(0, MIN_CAPTURE_ON_SCREEN_MS - shownFor)
+          if (hold > 0) await wait({ ms: hold })
+          // Closing the modal aborts the run, and a report appearing after
+          // that would be a result for something the reader walked away from.
+          if (controller.signal.aborted) return
+
           // The page capture came down with the mapping stage rather than
           // riding along here a second time; it is the largest thing on the
           // stream and sending it twice would double that.
@@ -179,6 +208,9 @@ export const ReviewForm = ({
           }
           pageShotRef.current = captured
           setPageShot(captured)
+          // Timed from here rather than from the first screenshot, because the
+          // pan is what there is to watch and it only starts with this one.
+          captureShownAtRef.current = performance.now()
         }
         if (event.stage === "asking") {
           setDetail(
