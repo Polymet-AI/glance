@@ -1,21 +1,17 @@
-import { existsSync } from "node:fs"
-import path from "node:path"
-import process from "node:process"
-
-// Next only looks for an env file beside the app. The terminal runner reads one
-// at the repo root, and keeping the same key in two places is how they drift,
-// so the root file is loaded here when it exists. A file beside the app still
-// wins, because Next loads that afterwards.
-const rootEnvFile = path.join(process.cwd(), "..", "..", ".env")
-if (existsSync(rootEnvFile)) {
-  process.loadEnvFile(rootEnvFile)
-}
-
 /** @type {import("next").NextConfig} */
 const nextConfig = {
-  // Playwright ships a browser and native bindings that must not be traced
-  // into the server bundle.
+  // Playwright ships native bindings and expects a browser on disk, neither of
+  // which survive being traced into the server bundle. It is imported only when
+  // no hosted browser is configured, which in practice means development.
   serverExternalPackages: ["playwright", "playwright-core"],
+
+  // The extractor bundle is read from disk at runtime rather than imported,
+  // because it is an IIFE meant to run inside someone else's page. A path built
+  // at runtime is invisible to file tracing, so the route that needs it says so
+  // explicitly or the file is missing once deployed.
+  outputFileTracingIncludes: {
+    "/api/review": ["./generated/extractor.js"],
+  },
 }
 
 export default nextConfig
