@@ -62,15 +62,13 @@ const Verdict = ({ review }: { review: DesignReview }) => (
 const Section = ({
   title,
   caption,
-  wide,
   children,
 }: {
   title: string
   caption?: string
-  wide?: boolean
   children: React.ReactNode
 }) => (
-  <section className={wide ? "section is-wide" : "section"}>
+  <section className="section">
     <div className="section-head">
       <h2>{title}</h2>
       {caption ? <p className="section-caption">{caption}</p> : null}
@@ -116,7 +114,6 @@ export const ReviewReport = ({ result }: { result: ReviewResult }) => {
         <Section
           title="Components"
           caption="The page as captured, with every component outlined. Reviewing them is a separate ask."
-          wide
         >
           <ComponentsPanel
             image={result.pageImage}

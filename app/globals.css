@@ -538,10 +538,6 @@ button:disabled {
   margin-bottom: 3.5rem;
 }
 
-.section.is-wide {
-  margin-inline: calc(-1 * clamp(0rem, (100vw - 60rem) / 2 - 1.5rem, 9rem));
-}
-
 .section-head {
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
