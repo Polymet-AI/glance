@@ -13,10 +13,10 @@ import type { BoardEntry } from "@/lib/leaderboard"
  * database read for every view of the landing page. The board is pulled again
  * only when a review lands here and actually changes it.
  *
- * The board is optional. With no database configured there are no rows from
- * either source and this renders nothing at all, rather than an empty panel or
- * an error, because a contributor who has just cloned the repo has no database
- * and there is nothing for them to fix.
+ * The board is optional. With no database configured this renders nothing at
+ * all, rather than an empty panel or an error, because a contributor who has
+ * just cloned the repo has no database and there is nothing for them to fix.
+ * A configured board holding no rows is a separate state and says so.
  *
  * A score here is the mean of every review a page has had, so it moves less the
  * more it is pressed. That is said out loud under the table, because a single
@@ -61,10 +61,13 @@ const Row = ({
 )
 
 export const Leaderboard = ({
+  enabled,
   initialEntries,
   version = 0,
   highlightKey = null,
 }: {
+  /** Whether a database is configured at all. Off means render nothing. */
+  enabled: boolean
   /** Read on the server, so the first paint already has the board in it. */
   initialEntries: BoardEntry[]
   /** Bumped by the page after a review, to pull the board again. */
@@ -96,7 +99,23 @@ export const Leaderboard = ({
     return () => controller.abort()
   }, [version])
 
-  if (entries.length === 0) return null
+  // No database is the only reason to render nothing. A configured board with
+  // no rows yet is a different state and says so, because hiding it makes a
+  // working board look exactly like a broken one.
+  if (!enabled) return null
+
+  if (entries.length === 0) {
+    return (
+      <section className="section board">
+        <div className="section-head">
+          <h2>Leaderboard</h2>
+        </div>
+        <p className="board-empty">
+          No pages on the board yet. Review one with the box above ticked and it lands here.
+        </p>
+      </section>
+    )
+  }
 
   return (
     <section className="section board">

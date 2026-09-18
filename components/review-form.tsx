@@ -258,7 +258,12 @@ export const ReviewForm = ({
 
       {result ? <ReviewReport result={result} /> : null}
 
-      <Leaderboard initialEntries={initialBoard} version={boardVersion} highlightKey={boardKey} />
+      <Leaderboard
+        enabled={boardEnabled}
+        initialEntries={initialBoard}
+        version={boardVersion}
+        highlightKey={boardKey}
+      />
     </>
   )
 }
