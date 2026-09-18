@@ -4,7 +4,7 @@ import { buildQuestions, buildReview } from "@/lib/review"
 import { recordReview } from "@/lib/leaderboard"
 import type { BoardEntry } from "@/lib/leaderboard"
 import { assertSafeUrl, BlockedUrlError } from "@/lib/url-guard"
-import { renderSnapshot } from "@/lib/render"
+import { renderPage, rendererName } from "@/lib/renderer"
 
 /** Playwright needs a real Node process, so this route is never edge. */
 export const runtime = "nodejs"
@@ -75,11 +75,11 @@ export const POST = async (request: Request): Promise<Response> => {
 
       try {
         const { snapshot, finalUrl, title, image, pageWidth, pageHeight, flattened, sections } =
-          await renderSnapshot({
-          input: parsed.url,
-          ...(parsed.brief ? { brief: parsed.brief } : {}),
-          onStage: (stage) => send({ event: stage }),
-        })
+          await renderPage({
+            input: parsed.url,
+            ...(parsed.brief ? { brief: parsed.brief } : {}),
+            onStage: (stage) => send({ event: stage }),
+          })
 
         if (snapshot.elements.length === 0) {
           send({
@@ -173,7 +173,12 @@ export const POST = async (request: Request): Promise<Response> => {
             event: { stage: "failed", error: "The review service did not answer. Try again in a moment." },
           })
         } else {
-          console.error("review failed", error instanceof Error ? error.message : error)
+          // Which browser ran matters when a render fails, and the two fail in
+          // different ways, so the log says which one it was.
+          console.error("review failed", {
+            renderer: rendererName(),
+            message: error instanceof Error ? error.message : error,
+          })
           send({
             event: {
               stage: "failed",

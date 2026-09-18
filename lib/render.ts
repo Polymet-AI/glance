@@ -1,27 +1,23 @@
-import { readFile } from "node:fs/promises"
-import path from "node:path"
-
 import { chromium } from "playwright"
 import type { Browser } from "playwright"
 import type { DesignSection, DesignSnapshot } from "@/lib/review"
 
+import { getExtractorSource } from "./extractor-source"
 import { assertSafeUrl, BlockedUrlError, isBlockedAddress } from "./url-guard"
+import { MAX_ELEMENTS, MAX_SECTIONS, SETTLE_MS, VIEWPORT } from "./render-types"
+import type { RenderResult, RenderStage } from "./render-types"
 
 /**
- * Renders a URL in a headless browser and reads a design snapshot out of it.
+ * Renders a URL in a browser this process launches, and reads a design
+ * snapshot out of it.
  *
- * A browser is not optional here. Fetching the HTML gives you markup with no
- * styles applied, and a design review is made almost entirely of resolved
- * colours, fonts and boxes, none of which exist until something lays the page
- * out.
+ * This is the development path. It reports every step and pushes a screenshot
+ * the moment navigation resolves, which is the richer experience, but it needs
+ * a real Chromium on disk and so cannot run on a serverless host. Production
+ * uses `render-firecrawl.ts` instead.
  */
 
-const VIEWPORT = { width: 1440, height: 900 }
 const NAVIGATION_TIMEOUT_MS = 20_000
-/** After load, give late paint and web fonts a moment before measuring. */
-const SETTLE_MS = 1_500
-const MAX_ELEMENTS = 400
-const MAX_SECTIONS = 8
 const SCREENSHOT_QUALITY = 62
 const PAGE_SCREENSHOT_QUALITY = 50
 /**
@@ -67,19 +63,6 @@ const getBrowser = async (): Promise<Browser> => {
   return launchBrowser()
 }
 
-let extractorSource: string | null = null
-
-const getExtractorSource = async (): Promise<string> => {
-  if (extractorSource) return extractorSource
-  const file = path.join(process.cwd(), "generated", "extractor.js")
-  try {
-    extractorSource = await readFile(file, "utf8")
-  } catch {
-    throw new Error("Extractor bundle is missing. Run `pnpm build:extractor` in apps/web.")
-  }
-  return extractorSource
-}
-
 /**
  * Lets the document grow to its content, so a full-page capture has something
  * to stitch.
@@ -119,33 +102,6 @@ const FLATTEN_SCROLLERS = ({ viewportHeight }: { viewportHeight: number }): numb
     touched += 1
   }
   return touched
-}
-
-export type RenderStage =
-  | { stage: "checking" }
-  | { stage: "launching" }
-  | { stage: "loading"; url: string }
-  | { stage: "settling" }
-  | { stage: "glimpse"; image: string }
-  | { stage: "captured"; image: string; title: string }
-  | { stage: "mapping"; pageImage: string; pageWidth: number; pageHeight: number }
-  | { stage: "extracting" }
-  | { stage: "sectioning"; sections: number }
-
-export type RenderResult = {
-  snapshot: DesignSnapshot & { truncated?: boolean }
-  finalUrl: string
-  title: string
-  /** A JPEG data URL of the viewport. Shown to the person, never sent to the model. */
-  image: string
-  /** The whole page as one image, for the component map. */
-  pageImage: string
-  pageWidth: number
-  pageHeight: number
-  /** True when the page had to be unpinned before it could be captured whole. */
-  flattened: boolean
-  /** The page split into components, each with its own snapshot. */
-  sections: DesignSection[]
 }
 
 export const renderSnapshot = async ({
