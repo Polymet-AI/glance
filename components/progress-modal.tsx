@@ -8,28 +8,35 @@ import { useEffect } from "react"
  * Every line here is reported by the server as that step begins, so the modal
  * never claims progress it has not been told about.
  *
- * It does not open until there is a page to show. The first capture is taken
- * the moment navigation resolves rather than after the settle, so the page is
- * on screen about as soon as the browser has it, and the modal never holds an
- * empty frame while the page is already loaded behind it.
+ * It opens the moment a review starts, before there is anything to show. The
+ * two renderers differ here and the modal has to suit the slower one: a local
+ * browser pushes a capture seconds in, a hosted one returns nothing until the
+ * whole render is done. Waiting for an image before opening left the reader
+ * looking at an unchanged page for half a minute, which reads as a dead button.
  *
- * Once the whole-page capture arrives the frame pans down it, which is both
- * the honest picture of what the server is doing and the most interesting
- * thing to look at while it does it.
+ * So the frame starts empty and says what it is waiting for. Once a capture
+ * arrives it takes over, and once the whole-page capture arrives the frame pans
+ * down it, which is both the honest picture of what the server is doing and the
+ * most interesting thing to look at while it does it.
  */
 
-export const STEP_ORDER: readonly { id: string; label: string }[] = [
-  { id: "checking", label: "Checking the address" },
-  { id: "launching", label: "Starting a browser" },
-  { id: "loading", label: "Loading the page" },
-  { id: "rendering", label: "Rendering it in a remote browser" },
-  { id: "glimpse", label: "First look" },
-  { id: "settling", label: "Waiting for fonts and late paint" },
-  { id: "captured", label: "Capturing the viewport" },
-  { id: "mapping", label: "Capturing the whole page" },
-  { id: "extracting", label: "Reading the design as structure" },
-  { id: "asking", label: "Asking the model" },
-]
+/**
+ * Every step either renderer can report, with the words for it. Which of these
+ * a given run shows is decided by the server, since only it knows which browser
+ * ran and therefore what can honestly be claimed.
+ */
+const STEP_LABELS: Record<string, string> = {
+  checking: "Checking the address",
+  launching: "Starting a browser",
+  loading: "Loading the page",
+  rendering: "Rendering it in a remote browser",
+  glimpse: "First look",
+  settling: "Waiting for fonts and late paint",
+  captured: "Capturing the viewport",
+  mapping: "Capturing the whole page",
+  extracting: "Reading the design as structure",
+  asking: "Asking the model",
+}
 
 const StepRow = ({
   step,
@@ -47,6 +54,7 @@ const StepRow = ({
 )
 
 export const ProgressModal = ({
+  steps,
   currentStep,
   detail,
   image,
@@ -56,6 +64,8 @@ export const ProgressModal = ({
   error,
   onClose,
 }: {
+  /** The step ids this run will report, in order, as the server named them. */
+  steps: string[]
   currentStep: string | null
   detail: string | null
   image: string | null
@@ -73,7 +83,7 @@ export const ProgressModal = ({
     return () => document.removeEventListener("keydown", onKey)
   }, [onClose])
 
-  const activeIndex = STEP_ORDER.findIndex((step) => step.id === currentStep)
+  const activeIndex = steps.indexOf(currentStep ?? "")
 
   // How far the capture has to travel for its foot to reach the frame's foot,
   // as a share of its own height. The frame is 16:10, so its height is
@@ -98,8 +108,12 @@ export const ProgressModal = ({
                 ["--pan-time" as string]: `${panSeconds}s`,
               }}
             />
+          ) : image ? (
+            <img src={image} alt="The page being reviewed" className="shot" />
           ) : (
-            <img src={image ?? ""} alt="The page being reviewed" className="shot" />
+            <div className="shot-waiting">
+              <span className="shot-waiting-line">Waiting for the page</span>
+            </div>
           )}
           <span className="scan" aria-hidden />
         </div>
@@ -107,10 +121,10 @@ export const ProgressModal = ({
         <div className="modal-side">
           <p className="eyebrow">{error ? "Stopped" : "Reviewing"}</p>
           <ol className="steps">
-            {STEP_ORDER.map((step, index) => (
+            {steps.map((id, index) => (
               <StepRow
-                key={step.id}
-                step={step}
+                key={id}
+                step={{ id, label: STEP_LABELS[id] ?? id }}
                 state={
                   error
                     ? index < activeIndex

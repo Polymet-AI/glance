@@ -297,6 +297,34 @@ button:disabled {
 }
 
 /*
+ * The frame before any capture exists. A hosted browser returns nothing until
+ * the whole render is done, so this holds the frame's shape and says what it is
+ * waiting for rather than showing a broken image or an empty box.
+ */
+.shot-waiting {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    110deg,
+    rgba(244, 241, 234, 0.03) 0%,
+    rgba(244, 241, 234, 0.07) 50%,
+    rgba(244, 241, 234, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+.shot-waiting-line {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/*
  * Pans down the capture at roughly a screen every second and a half, the pace
  * of someone reading it rather than a loading bar. `--pan` is how far the
  * capture must travel for its foot to meet the frame's, as a share of its own
@@ -841,7 +869,8 @@ h2 {
 
 @media (prefers-reduced-motion: reduce) {
   .scan,
-  .step.is-active .step-mark {
+  .step.is-active .step-mark,
+  .shot-waiting {
     animation: none;
   }
 

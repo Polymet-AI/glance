@@ -12,6 +12,7 @@ const EXAMPLES = ["stripe.com", "linear.app", "news.ycombinator.com", "vercel.co
 
 type StreamEvent = {
   stage: string
+  steps?: string[]
   url?: string
   image?: string
   title?: string
@@ -67,6 +68,8 @@ export const ReviewForm = ({
   const [url, setUrl] = useState("")
   const [running, setRunning] = useState(false)
   const [step, setStep] = useState<string | null>(null)
+  // Named by the server, because only it knows which browser is doing the work.
+  const [steps, setSteps] = useState<string[]>([])
   const [detail, setDetail] = useState<string | null>(null)
   const [shot, setShot] = useState<string | null>(null)
   const [pageShot, setPageShot] = useState<{
@@ -103,6 +106,9 @@ export const ReviewForm = ({
 
     setRunning(true)
     setStep("checking")
+    // Cleared rather than kept: the previous run's list may not describe this
+    // one, and the server names the new one before anything else happens.
+    setSteps([])
     setDetail(null)
     setShot(null)
     setPageShot(null)
@@ -131,6 +137,11 @@ export const ReviewForm = ({
         if (event.stage === "failed") {
           setError(event.error ?? "That page could not be reviewed.")
           return
+        }
+        // Not a step itself, just the list of the ones to come.
+        if (event.stage === "steps" && event.steps) {
+          setSteps(event.steps)
+          continue
         }
         // The page result arrives first and the components stream in behind
         // it, so the report is readable while they are still landing.
@@ -201,7 +212,7 @@ export const ReviewForm = ({
           autoComplete="off"
         />
         <button type="submit" disabled={running}>
-          {running ? (shot ? "Reviewing…" : "Starting…") : "Review"}
+          {running ? "Reviewing…" : "Review"}
         </button>
       </form>
 
@@ -243,8 +254,14 @@ export const ReviewForm = ({
 
       {error && !running ? <p className="error">{error}</p> : null}
 
-      {(running || (error && step)) && shot ? (
+      {/*
+        Opened as soon as a review starts, with or without a capture to show.
+        A hosted browser returns nothing until the whole render is finished, so
+        waiting for an image left the page looking untouched for half a minute.
+      */}
+      {running || (error && step) ? (
         <ProgressModal
+          steps={steps}
           currentStep={step}
           detail={detail}
           image={shot}
