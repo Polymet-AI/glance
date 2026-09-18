@@ -22,6 +22,7 @@ export const STEP_ORDER: readonly { id: string; label: string }[] = [
   { id: "checking", label: "Checking the address" },
   { id: "launching", label: "Starting a browser" },
   { id: "loading", label: "Loading the page" },
+  { id: "rendering", label: "Rendering it in a remote browser" },
   { id: "glimpse", label: "First look" },
   { id: "settling", label: "Waiting for fonts and late paint" },
   { id: "captured", label: "Capturing the viewport" },
